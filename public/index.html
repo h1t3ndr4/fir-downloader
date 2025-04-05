@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FIR Download</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #e0eafc, #68a3ff); /* Modern gradient background */
+            color: #333;
+        }
+
+        #downloadForm {
+            width: 90%;
+            max-width: 500px; /* Increased max width for better readability */
+            padding: 30px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: left;
+        }
+
+        h1 {
+            text-align: center;
+            color: #37474f; /* Darker, modern heading color */
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #37474f;
+        }
+
+        input[type="text"], select {
+            width: calc(100% - 22px); /* Adjusted width */
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #007bff; /* Modern blue button */
+            color: white;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #downloadLink {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        #downloadLink a {
+            background-color: #28a745; /* Modern green download link */
+            color: white;
+            padding: 14px 20px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        #downloadLink a:hover {
+            background-color: #218838;
+        }
+
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+            margin: 30px auto;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="downloadForm">
+        <h1>FIR Download</h1>
+        <form id="form">
+            <label for="fromDate">From Date (DD/MM/YYYY):</label>
+            <input type="text" id="fromDate" name="fromDate" required>
+
+            <label for="toDate">To Date (DD/MM/YYYY):</label>
+            <input type="text" id="toDate" name="toDate" required>
+
+            <label for="districtName">District:</label>
+            <select id="districtName" name="districtName" required>
+                <option value="">Select District</option>
+                <option value="AHILYANAGAR">AHILYANAGAR</option>
+                <option value="AKOLA">AKOLA</option>
+                <option value="AMRAVATI CITY">AMRAVATI CITY</option>
+                <option value="AMRAVATI RURAL">AMRAVATI RURAL</option>
+                <option value="BEED">BEED</option>
+                <option value="BHANDARA">Bhandara</option>
+                 <option value="BRIHAN MUMBAI CITY">BRIHAN MUMBAI CITY</option>
+                 <option value="BULDHANA">BULDHANA</option>
+                <option value="CHANDRAPUR">CHANDRAPUR</option>
+                <option value="CHHATRAPATI SAMBHAJINAGAR (RURAL)">CHHATRAPATI SAMBHAJINAGAR (RURAL)</option>
+                <option value="CHHATRAPATI SAMBHAJINAGAR CITY">CHHATRAPATI SAMBHAJINAGAR CITY</option>
+                 <option value="DHARASHIV">DHARASHIV</option>
+                <option value="DHULE">DHULE</option>
+                <option value="GADCHIROLI">GADCHIROLI</option>
+                <option value="GONDIA">GONDIA</option>
+                <option value="HINGOLI">HINGOLI</option>
+                <option value="JALGAON">JALGAON</option>
+                <option value="JALNA">JALNA</option>
+                <option value="KOLHAPUR">KOLHAPUR</option>
+                <option value="LATUR">LATUR</option>
+                <option value="Mira-Bhayandar, Vasai-Virar Police Commissioner">Mira-Bhayandar, Vasai-Virar Police Commissioner</option>
+                <option value="NAGPUR CITY">NAGPUR CITY</option>
+                <option value="NAGPUR RURAL">NAGPUR RURAL</option>
+                <option value="NANDED">NANDED</option>
+                <option value="NANDURBAR">NANDURBAR</option>
+                <option value="NASHIK CITY">NASHIK CITY</option>
+                <option value="NASHIK RURAL">NASHIK RURAL</option>
+                <option value="NAVI MUMBAI">NAVI MUMBAI</option>
+                <option value="PALGHAR">PALGHAR</option>
+                <option value="PARBHANI">PARBHANI</option>
+                <option value="PIMPRI-CHINCHWAD">PIMPRI-CHINCHWAD</option>
+                <option value="PUNE CITY">PUNE CITY</option>
+                <option value="PUNE RURAL">PUNE RURAL</option>
+                <option value="RAIGAD">RAIGAD</option>
+                <option value="RAILWAY CHHATRAPATI SAMBHAJINAGAR">RAILWAY CHHATRAPATI SAMBHAJINAGAR</option>
+                <option value="RAILWAY MUMBAI">RAILWAY MUMBAI</option>
+                <option value="RAILWAY NAGPUR">RAILWAY NAGPUR</option>
+                <option value="RAILWAY PUNE">RAILWAY PUNE</option>
+                <option value="RATNAGIRI">RATNAGIRI</option>
+                <option value="SANGLI">SANGLI</option>
+                <option value="SATARA">SATARA</option>
+                <option value="SINDHUDURG">SINDHUDURG</option>
+                <option value="SOLAPUR CITY">SOLAPUR CITY</option>
+                <option value="SOLAPUR RURAL">SOLAPUR RURAL</option>
+                <option value="THANE CITY">THANE CITY</option>
+                <option value="THANE RURAL">THANE RURAL</option>
+                <option value="WARDHA">WARDHA</option>
+                <option value="WASHIM">WASHIM</option>
+                <option value="YAVATMAL">YAVATMAL</option>
+            </select>
+
+            <button type="submit">Download FIRs</button>
+            <div class="loader" id="loader"></div>
+        </form>
+        <div id="downloadLink"></div>
+    </div>
+
+    <script>
+        document.getElementById('form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+            const districtName = document.getElementById('districtName').value;
+            const loader = document.getElementById('loader');
+            const downloadLinkDiv = document.getElementById('downloadLink');
+
+            loader.style.display = 'block';
+
+            fetch(`/download-firs?fromDate=${fromDate}&toDate=${toDate}&districtName=${districtName}`)
+                .then(response => response.text())
+                .then(data => {
+                    loader.style.display = 'none';
+                    downloadLinkDiv.innerHTML = data;
+                });
+        });
+    </script>
+</body>
+</html>
