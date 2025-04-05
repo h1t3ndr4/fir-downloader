@@ -35,8 +35,9 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, res) {
     const browser = await puppeteer.launch({
         headless: "new",
         defaultViewport: null,
-        args: ['--start-maximized']
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--start-maximized']
     });
+
 
     const page = await browser.newPage();
     const client = await page.target().createCDPSession();
