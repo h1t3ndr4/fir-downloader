@@ -142,7 +142,10 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, res) {
                         await new Promise(resolve => setTimeout(resolve, 5000));
 
                         const firNumber = fir.data[7].split("/")[0];
-                        const newFileName = `${fir.data[2]}_${fir.data[3]}_${fir.data[4]}_${firNumber}_${fir.data[6]}.pdf`;
+                        const rawName = `${fir.data[2]}_${fir.data[3]}_${fir.data[4]}_${firNumber}_${fir.data[6]}`;
+                        const safeFileName = rawName.replace(/[\/\\:\*\?"<>\|]/g, '_');
+                        const newFileName = `${safeFileName}.pdf`;
+
 
                         const oldFilePath = path.join(downloadPath, downloadedFile);
                         const newFilePath = path.join(downloadPath, newFileName);
