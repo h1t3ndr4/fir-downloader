@@ -8,7 +8,8 @@ const express = require("express");
 const archiver = require("archiver");
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
+const host = '0.0.0.0'; // Required for Railway
 
 // Add JSON parsing middleware
 app.use(express.json());
@@ -776,8 +777,8 @@ if (!fs.existsSync(baseDownloadsPath)) {
   console.log(`📁 Created base downloads directory: ${baseDownloadsPath}`);
 }
 
-app.listen(port, () => {
-  console.log(`🚀 Server listening at http://localhost:${port}`);
+app.listen(port, host, () => {
+  console.log(`🚀 Server listening at http://${host}:${port}`);
   console.log(`📁 Base downloads path: ${baseDownloadsPath}`);
   console.log(`🎯 Target: Animal protection law FIRs`);
   console.log(`📋 Available districts: ${Object.keys(allowedDistricts).length}`);
