@@ -9,7 +9,7 @@ const archiver = require("archiver");
 
 const app = express();
 const port = process.env.PORT || 8080;
-const host = '0.0.0.0'; // Required for Railway
+const host = '0.0.0.0';
 
 // Add JSON parsing middleware
 app.use(express.json());
@@ -28,6 +28,40 @@ const allowedDistricts = {
   RATNAGIRI: "19395", SANGLI: "19396", SATARA: "19397", SINDHUDURG: "19406", "SOLAPUR CITY": "19410", "SOLAPUR RURAL": "19398",
   "THANE CITY": "19399", "THANE RURAL": "19407", WARDHA: "19400", WASHIM: "19843", YAVATMAL: "19401"
 };
+
+// Add process monitoring for crashes
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err.message);
+  console.error('Stack:', err.stack);
+  // Don't exit immediately - log first
+  setTimeout(() => process.exit(1), 1000);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit for promise rejections in Puppeteer context
+});
+
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT received, shutting down gracefully');
+  process.exit(0);
+});
+
+// Memory monitoring
+setInterval(() => {
+  const memUsage = process.memoryUsage();
+  console.log(`📊 Memory: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB / ${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`);
+  
+  // Railway Hobby has limited memory - warn if getting close
+  if (memUsage.heapUsed > 800 * 1024 * 1024) { // 800MB warning
+    console.warn('⚠️ High memory usage detected');
+  }
+}, 30000); // Check every 30 seconds
 
 // Helper functions for job-specific directories
 function getJobDownloadPath(jobId) {
@@ -143,7 +177,7 @@ async function waitForDownloadedPdf(downloadDir, beforeSet, timeoutMs = 120000) 
       } else {
         stableCount = 0;
         lastSize = size;
-        console.log(`📈 File size changed to ${size} bytes`);
+        console.log(`📈 File size changed to ${size} bytes, resetting stability counter`);
       }
 
       if (stableCount >= 3) {
@@ -176,7 +210,39 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
     const browser = await puppeteer.launch({
       headless: "new",
       defaultViewport: null,
-      args: ["--start-maximized"]
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-web-security',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--single-process', // Use single process to reduce memory
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-renderer-backgrounding',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-client-side-phishing-detection',
+        '--disable-component-extensions-with-background-pages',
+        '--disable-default-apps',
+        '--disable-extensions',
+        '--disable-features=TranslateUI',
+        '--disable-hang-monitor',
+        '--disable-ipc-flooding-protection',
+        '--disable-popup-blocking',
+        '--disable-prompt-on-repost',
+        '--disable-renderer-backgrounding',
+        '--disable-sync',
+        '--force-color-profile=srgb',
+        '--metrics-recording-only',
+        '--no-first-run',
+        '--safebrowsing-disable-auto-update',
+        '--enable-automation',
+        '--password-store=basic',
+        '--use-mock-keychain'
+      ],
+      defaultViewport: { width: 1024, height: 768 }, // Smaller viewport
+      ignoreHTTPSErrors: true
     });
 
     try {
@@ -187,9 +253,24 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
       updateJobProgress(jobId, "⚙️ Configuring download settings...", { totalDownloaded });
       console.log(`⚙️ Configuring download behavior for job ${jobId}...`);
       const client = await page.target().createCDPSession();
-      const absPath = path.resolve(jobDownloadPath);
+      const absPath = path.resolve(jobDownloadPath); // Use job-specific path
       console.log(`📂 Job ${jobId} absolute download path: ${absPath}`);
       
+      // ✅ Memory optimizations
+      await page.setViewport({ width: 1024, height: 768 });
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+      
+      // ✅ Block unnecessary resources to save memory
+      await page.setRequestInterception(true);
+      page.on('request', (req) => {
+        const resourceType = req.resourceType();
+        if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+          req.abort();
+        } else {
+          req.continue();
+        }
+      });
+
       let downloadBehaviorSet = false;
       try {
         await client.send("Browser.setDownloadBehavior", {
@@ -217,7 +298,10 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
       const url = "https://citizen.mahapolice.gov.in/Citizen/MH/PublishedFIRs.aspx";
       updateJobProgress(jobId, "🔗 Connecting to Maharashtra Police website...", { totalDownloaded });
       console.log(`🔗 Job ${jobId}: Navigating to: ${url}`);
-      await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
+      await page.goto(url, { 
+        waitUntil: "domcontentloaded", // Faster than networkidle
+        timeout: 30000 
+      });
       
       updateJobProgress(jobId, "🔄 Loading website content...", { totalDownloaded });
       console.log(`🔄 Job ${jobId}: Reloading page...`);
@@ -286,7 +370,8 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
       let isLastPage = false;
       const seenFirstRowHashes = new Set();
 
-      while (!isLastPage) {
+      // ✅ Process pages with memory management
+      while (!isLastPage && pageIndex <= 10) { // Limit to 10 pages to prevent memory overflow
         const elapsedMinutes = (Date.now() - startTime) / 60000;
         const processingSpeed = totalDownloaded > 0 ? `${Math.round(totalDownloaded / elapsedMinutes)} files/min` : 'Calculating...';
         
@@ -297,6 +382,7 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
         });
         console.log(`📄 Job ${jobId}: Processing page ${pageIndex}...`);
         
+        // Grab rows: each row has 10 TDs; last TD has a download input
         const firData = await page.evaluate(() => {
           const rows = Array.from(
             document.querySelectorAll("#ContentPlaceHolder1_gdvDeadBody tr")
@@ -323,6 +409,7 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
           break;
         }
 
+        // Log first few records for debugging
         if (firData.length > 0) {
           console.log(`📝 Job ${jobId}: Sample FIR data (first record):`);
           firData[0].data.forEach((cell, idx) => {
@@ -330,6 +417,7 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
           });
         }
 
+        // Detect repetition by hashing first row (guard against pager resets)
         const firstRowKey = JSON.stringify(firData[0]);
         if (seenFirstRowHashes.has(firstRowKey)) {
           console.log(`🔄 Job ${jobId}: Detected repeated data, ending pagination`);
@@ -338,6 +426,7 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
           seenFirstRowHashes.add(firstRowKey);
         }
 
+        // Download matching sections
         let pageDownloads = 0;
         for (const [index, fir] of firData.entries()) {
           try {
@@ -355,6 +444,7 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
             });
             console.log(`🔍 Job ${jobId}: Checking FIR ${index + 1}/${firData.length} on page ${pageIndex}`);
             
+            // Check multiple columns for section text (adjusting based on actual data structure)
             const sectionText1 = fir.data[8] || "";
             const sectionText2 = fir.data[1] || "";
             const allText = sectionText1 + " " + sectionText2;
@@ -380,14 +470,14 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
               processingSpeed: currentProcessingSpeed
             });
             console.log(`📥 Job ${jobId}: Attempting download for selector: ${fir.downloadSelector}`);
-            const filesBefore = new Set(fs.readdirSync(jobDownloadPath));
+            const filesBefore = new Set(fs.readdirSync(jobDownloadPath)); // Use job-specific path
             console.log(`📁 Job ${jobId}: Files before download: ${filesBefore.size}`);
             
             await page.click(`#${fir.downloadSelector}`);
             console.log(`🖱️ Job ${jobId}: Download button clicked`);
 
             const downloadedFile = await waitForDownloadedPdf(
-              jobDownloadPath,
+              jobDownloadPath, // Use job-specific path
               filesBefore,
               120000
             );
@@ -395,18 +485,20 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
             if (downloadedFile) {
               console.log(`✅ Job ${jobId}: File downloaded: ${downloadedFile}`);
               
+              // Extract data for filename (adjusting indices based on actual structure)
               const firNumberRaw = (fir.data[7] || fir.data[2] || "unknown").split("/");
-              const field2 = safe(fir.data[2] || "field2");
-              const field3 = safe(fir.data[3] || "field3");
-              const field4 = safe(fir.data[4] || "field4");
-              const field6 = safe(fir.data[5] || "field6");
+              const field2 = safe(fir.data || "field2");
+              const field3 = safe(fir.data || "field3");
+              const field4 = safe(fir.data || "field4");
+              const field6 = safe(fir.data || "field6");
               
               const newFileName = `${field2}_${field3}_${field4}_${safe(firNumberRaw)}_${field6}.pdf`;
               console.log(`📝 Job ${jobId}: Renaming to: ${newFileName}`);
 
-              const oldFilePath = path.join(jobDownloadPath, downloadedFile);
-              const newFilePath = path.join(jobDownloadPath, newFileName);
+              const oldFilePath = path.join(jobDownloadPath, downloadedFile); // Job-specific path
+              const newFilePath = path.join(jobDownloadPath, newFileName);    // Job-specific path
 
+              // Avoid overwriting
               let finalPath = newFilePath;
               let i = 1;
               while (fs.existsSync(finalPath)) {
@@ -434,15 +526,18 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
               console.log(`❌ Job ${jobId}: Download failed or timed out`);
             }
 
+            // Small delay to avoid overwhelming the site
             console.log(`⏳ Job ${jobId}: Waiting 1 second before next download...`);
             await new Promise((r) => setTimeout(r, 1000));
           } catch (err) {
             console.error(`❌ Job ${jobId}: Error processing FIR ${index + 1}: ${err.message}`);
+            // Continue other rows even if one fails
           }
         }
 
         console.log(`📊 Job ${jobId}: Page ${pageIndex} summary: ${pageDownloads} downloads completed`);
 
+        // Pagination: try to click next pageIndex+1
         pageIndex++;
         updateJobProgress(jobId, `🔄 Moving to page ${pageIndex}... (${totalDownloaded} files collected so far)`, { 
           currentPage: pageIndex - 1, 
@@ -483,19 +578,30 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
           console.log(`⏳ Job ${jobId}: Waiting for page ${pageIndex} to load...`);
         }
 
+        // Wait table visible again
         await page.waitForSelector("#ContentPlaceHolder1_gdvDeadBody", {
           visible: true,
           timeout: 60000
         });
         console.log(`✅ Job ${jobId}: Page ${pageIndex} loaded successfully`);
+        
+        // ✅ Memory cleanup every few pages
+        if (pageIndex % 3 === 0) {
+          await page.evaluate(() => {
+            if (window.gc) window.gc(); // Force garbage collection if available
+          });
+        }
       }
 
+      // ✅ Close page before ZIP creation
+      await page.close();
       console.log(`🎉 Job ${jobId}: Scraping completed! Total downloads: ${totalDownloaded}`);
       await browser.close();
       console.log(`🌐 Job ${jobId}: Browser closed`);
       
     } catch (err) {
       console.error(`❌ Job ${jobId}: Error during extraction: ${err.message}`);
+      console.error(`Stack trace: ${err.stack}`);
       try {
         await browser.close();
         console.log(`🌐 Job ${jobId}: Browser closed after error`);
@@ -524,7 +630,7 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
       });
 
       archive.pipe(output);
-      archive.directory(jobDownloadPath, false);
+      archive.directory(jobDownloadPath, false); // Archive job-specific directory
       archive.finalize();
     });
 
@@ -538,7 +644,104 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
   }
 }
 
-app.use(express.static(path.join(__dirname, "public")));
+// ✅ MIDDLEWARE CONFIGURATION - CRITICAL FOR STATIC FILES
+// Request logging middleware
+app.use("/", (req, res, next) => {
+  console.log(`📥 ${new Date().toISOString()} - ${req.method} ${req.path} from ${req.ip}`);
+  next();
+});
+
+// ✅ STATIC FILE SERVING - MUST BE BEFORE ROUTES
+const publicPath = path.join(__dirname, "public");
+console.log(`📁 Setting up static files from: ${publicPath}`);
+app.use(express.static(publicPath));
+
+// ✅ DEBUGGING ROUTES - FIRST PRIORITY
+app.get('/debug-files', (req, res) => {
+  const indexPath = path.join(publicPath, "index.html");
+  
+  const debugInfo = {
+    timestamp: new Date().toISOString(),
+    publicPathExists: fs.existsSync(publicPath),
+    indexHtmlExists: fs.existsSync(indexPath),
+    publicPath: publicPath,
+    indexPath: indexPath,
+    filesInPublic: fs.existsSync(publicPath) ? fs.readdirSync(publicPath) : [],
+    filesInRoot: fs.readdirSync(__dirname).filter(f => !f.startsWith('.')),
+    currentWorkingDir: process.cwd(),
+    __dirname: __dirname,
+    nodeVersion: process.version,
+    platform: process.platform,
+    environment: process.env.NODE_ENV || 'development',
+    railway: !!process.env.RAILWAY_ENVIRONMENT_NAME,
+    port: port,
+    host: host
+  };
+  
+  console.log('🔍 Debug info requested:', debugInfo);
+  res.json(debugInfo);
+});
+
+app.get('/env-debug', (req, res) => {
+  const envInfo = {
+    nodeVersion: process.version,
+    platform: process.platform,
+    environment: process.env.NODE_ENV,
+    railway: !!process.env.RAILWAY_ENVIRONMENT_NAME,
+    memoryAvailable: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`,
+    chromeExists: fs.existsSync('/usr/bin/google-chrome-stable'),
+    writePermissions: (() => {
+      try {
+        fs.writeFileSync('./test-write.txt', 'test');
+        fs.unlinkSync('./test-write.txt');
+        return true;
+      } catch (e) {
+        return false;
+      }
+    })(),
+    publicFolderExists: fs.existsSync(publicPath),
+    indexFileExists: fs.existsSync(path.join(publicPath, "index.html"))
+  };
+  
+  res.json(envInfo);
+});
+
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
+});
+
+// ✅ FALLBACK ROUTE FOR ROOT PATH
+app.get('/', (req, res) => {
+  const indexPath = path.join(publicPath, "index.html");
+  console.log(`🏠 Root route requested, serving: ${indexPath}`);
+  
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    console.error(`❌ Index.html not found at: ${indexPath}`);
+    res.status(404).send(`
+      <html>
+        <head><title>FIR Downloader - File Not Found</title></head>
+        <body>
+          <h1>❌ Index.html not found</h1>
+          <p><strong>Looking for:</strong> ${indexPath}</p>
+          <p><strong>Public folder exists:</strong> ${fs.existsSync(publicPath)}</p>
+          <p><strong>Files in project root:</strong></p>
+          <ul>
+            ${fs.readdirSync(__dirname).map(f => `<li>${f}</li>`).join('')}
+          </ul>
+          <p><a href="/debug-files">🔍 Check detailed debug info</a></p>
+          <p><a href="/health">💊 Check server health</a></p>
+        </body>
+      </html>
+    `);
+  }
+});
 
 // Start FIR extraction job
 app.post("/start-fir-job", async (req, res) => {
@@ -596,10 +799,10 @@ app.post("/start-fir-job", async (req, res) => {
     j.userIp === req.ip && 
     (j.status === 'started' || j.status === 'running')
   );
-  if (userJobs.length >= 2) {
+  if (userJobs.length >= 1) { // Reduce to 1 concurrent job
     console.log(`❌ Rate limit exceeded for IP: ${req.ip}`);
     return res.status(429).json({
-      error: "Too many concurrent jobs. Please wait for existing jobs to complete."
+      error: "Please wait for your current job to complete before starting a new one."
     });
   }
 
@@ -770,19 +973,56 @@ function cleanupOldJobs() {
 // Run backup cleanup every 2 hours
 setInterval(cleanupOldJobs, 2 * 60 * 60 * 1000);
 
-// Create base downloads directory
+// ✅ CREATE REQUIRED DIRECTORIES
 const baseDownloadsPath = path.resolve("./downloads");
 if (!fs.existsSync(baseDownloadsPath)) {
   fs.mkdirSync(baseDownloadsPath, { recursive: true });
   console.log(`📁 Created base downloads directory: ${baseDownloadsPath}`);
 }
 
-app.listen(port, host, () => {
-  console.log(`🚀 Server listening at http://${host}:${port}`);
-  console.log(`📁 Base downloads path: ${baseDownloadsPath}`);
-  console.log(`🎯 Target: Animal protection law FIRs`);
-  console.log(`📋 Available districts: ${Object.keys(allowedDistricts).length}`);
-  console.log(`👥 Multi-user support: ENABLED`);
-  console.log(`🗑️ Auto-cleanup: 30 minutes after completion`);
-  console.log(`⚡ Rate limit: 2 concurrent jobs per IP`);
+// ✅ Check public directory (use existing publicPath variable - NO REDECLARATION)
+if (!fs.existsSync(publicPath)) {
+  console.error(`❌ WARNING: Public directory not found at: ${publicPath}`);
+  console.error(`📁 Available files in project root:`, fs.readdirSync(__dirname));
+}
+
+// ✅ START SERVER WITH ROBUST ERROR HANDLING
+async function startServer() {
+  try {
+    const server = app.listen(port, host, () => {
+      console.log(`🚀 Server listening at http://${host}:${port}`);
+      console.log(`📁 Base downloads path: ${baseDownloadsPath}`);
+      console.log(`📁 Public path: ${publicPath}`);
+      console.log(`📁 Public folder exists: ${fs.existsSync(publicPath)}`);
+      console.log(`📄 Index.html exists: ${fs.existsSync(path.join(publicPath, 'index.html'))}`);
+      console.log(`🎯 Target: Animal protection law FIRs`);
+      console.log(`📋 Available districts: ${Object.keys(allowedDistricts).length}`);
+      console.log(`👥 Multi-user support: ENABLED`);
+      console.log(`🗑️ Auto-cleanup: 30 minutes after completion`);
+      console.log(`⚡ Rate limit: 1 concurrent job per IP`);
+      console.log(`💾 Memory monitoring: ENABLED`);
+      console.log(`🔍 Debug endpoints: /debug-files, /env-debug, /health`);
+    });
+
+    server.on('error', (err) => {
+      console.error('❌ Server error:', err.message);
+      if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${port} is already in use`);
+        process.exit(1);
+      }
+    });
+
+    // Keep server alive
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout = 66000;
+    
+  } catch (error) {
+    console.error('❌ Failed to start server:', error.message);
+    process.exit(1);
+  }
+}
+
+startServer().catch(err => {
+  console.error('❌ Server startup failed:', err);
+  process.exit(1);
 });
