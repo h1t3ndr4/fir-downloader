@@ -82,11 +82,13 @@ function ensureJobDownloadDir(jobId) {
   return jobDownloadPath;
 }
 
+// ✅ FIXED: Enhanced safe function with length limit to prevent ENAMETOOLONG
 function safe(name) {
   return String(name)
     .replace(/[\\/:*?"<>|]/g, "_")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .substring(0, 50); // ✅ LIMIT to 50 characters to prevent filename too long
 }
 
 function updateJobProgress(jobId, progress, details = {}) {
@@ -485,14 +487,22 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
             if (downloadedFile) {
               console.log(`✅ Job ${jobId}: File downloaded: ${downloadedFile}`);
               
-              // Extract data for filename (adjusting indices based on actual structure)
+              // ✅ FIXED: Extract data for filename with length limits
               const firNumberRaw = (fir.data[7] || fir.data[2] || "unknown").split("/");
               const field2 = safe(fir.data || "field2");
-              const field3 = safe(fir.data || "field3");
-              const field4 = safe(fir.data || "field4");
-              const field6 = safe(fir.data || "field6");
+              const field3 = safe(fir.data[3] || "field3");
+              const field4 = safe(fir.data[4] || "field4");
+              const field6 = safe(fir.data[6] || "field6");
               
-              const newFileName = `${field2}_${field3}_${field4}_${safe(firNumberRaw)}_${field6}.pdf`;
+              // ✅ FIXED: Create shorter filename with total length check
+              let newFileName = `${field2}_${field3}_${field4}_${safe(firNumberRaw)}_${field6}.pdf`;
+              
+              // ✅ ADDITIONAL SAFETY: If still too long, truncate to 100 chars max
+              if (newFileName.length > 100) {
+                const timestamp = Date.now().toString().slice(-6); // Last 6 digits
+                newFileName = `FIR_${safe(firNumberRaw)}_${timestamp}.pdf`;
+              }
+              
               console.log(`📝 Job ${jobId}: Renaming to: ${newFileName}`);
 
               const oldFilePath = path.join(jobDownloadPath, downloadedFile); // Job-specific path
