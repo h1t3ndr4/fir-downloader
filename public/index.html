@@ -1,192 +1,415 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>FIR Download</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #e0eafc, #68a3ff); /* Modern gradient background */
-            color: #333;
-        }
-
-        #downloadForm {
-            width: 90%;
-            max-width: 500px; /* Increased max width for better readability */
-            padding: 30px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            text-align: left;
-        }
-
-        h1 {
-            text-align: center;
-            color: #37474f; /* Darker, modern heading color */
-            margin-bottom: 30px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #37474f;
-        }
-
-        input[type="text"], select {
-            width: calc(100% - 22px); /* Adjusted width */
-            padding: 12px;
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-
-        button {
-            background-color: #007bff; /* Modern blue button */
-            color: white;
-            padding: 14px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        #downloadLink {
-            margin-top: 30px;
-            text-align: center;
-        }
-
-        #downloadLink a {
-            background-color: #28a745; /* Modern green download link */
-            color: white;
-            padding: 14px 20px;
-            text-decoration: none;
-            border-radius: 6px;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-        }
-
-        #downloadLink a:hover {
-            background-color: #218838;
-        }
-
-        .loader {
-            border: 8px solid #f3f3f3;
-            border-top: 8px solid #3498db;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 2s linear infinite;
-            margin: 30px auto;
-            display: none;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+  <title>Animal Protection FIR Downloader</title>
+  <meta charset="utf-8" />
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #e0eafc, #68a3ff);
+      color: #333;
+    }
+    #downloadForm {
+      width: 90%;
+      max-width: 600px;
+      padding: 30px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      text-align: left;
+    }
+    h1 {
+      text-align: center;
+      color: #37474f;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #37474f;
+    }
+    input[type="text"], select {
+      width: calc(100% - 22px);
+      padding: 12px;
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 16px;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+    }
+    button:hover { background-color: #0056b3; }
+    button:disabled {
+      background-color: #6c757d;
+      cursor: not-allowed;
+    }
+    #downloadLink { margin-top: 30px; text-align: center; }
+    #downloadLink a {
+      background-color: #28a745;
+      color: white;
+      padding: 14px 20px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+      display: inline-block;
+    }
+    #downloadLink a:hover { background-color: #218838; }
+    .loader {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #3498db;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 2s linear infinite;
+      margin: 20px auto;
+      display: none;
+    }
+    @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+    .error { 
+      color: #b00020; 
+      margin-top: 15px; 
+      text-align: center; 
+      background-color: #ffebee; 
+      padding: 15px; 
+      border-radius: 6px; 
+      border: 1px solid #ffcdd2;
+      display: none;
+    }
+    .progress { 
+      color: #007bff; 
+      margin-top: 20px; 
+      text-align: center;
+      font-size: 15px;
+      background-color: #e3f2fd;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #bbdefb;
+      display: none;
+    }
+    .progress-details {
+      font-size: 13px;
+      margin-top: 10px;
+      color: #555;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      text-align: left;
+    }
+    .progress-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px;
+      background: rgba(255,255,255,0.7);
+      border-radius: 4px;
+    }
+    .success {
+      color: #2e7d32;
+      background-color: #e8f5e8;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #c8e6c9;
+      margin-top: 20px;
+      text-align: center;
+      display: none;
+    }
+    .job-info {
+      font-size: 12px;
+      color: #666;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .warning {
+      background-color: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
-    <div id="downloadForm">
-        <h1>FIR Download</h1>
-        <form id="form">
-            <label for="fromDate">From Date (DD/MM/YYYY):</label>
-            <input type="text" id="fromDate" name="fromDate" required>
-
-            <label for="toDate">To Date (DD/MM/YYYY):</label>
-            <input type="text" id="toDate" name="toDate" required>
-
-            <label for="districtName">District:</label>
-            <select id="districtName" name="districtName" required>
-                <option value="">Select District</option>
-                <option value="AHILYANAGAR">AHILYANAGAR</option>
-                <option value="AKOLA">AKOLA</option>
-                <option value="AMRAVATI CITY">AMRAVATI CITY</option>
-                <option value="AMRAVATI RURAL">AMRAVATI RURAL</option>
-                <option value="BEED">BEED</option>
-                <option value="BHANDARA">Bhandara</option>
-                 <option value="BRIHAN MUMBAI CITY">BRIHAN MUMBAI CITY</option>
-                 <option value="BULDHANA">BULDHANA</option>
-                <option value="CHANDRAPUR">CHANDRAPUR</option>
-                <option value="CHHATRAPATI SAMBHAJINAGAR (RURAL)">CHHATRAPATI SAMBHAJINAGAR (RURAL)</option>
-                <option value="CHHATRAPATI SAMBHAJINAGAR CITY">CHHATRAPATI SAMBHAJINAGAR CITY</option>
-                 <option value="DHARASHIV">DHARASHIV</option>
-                <option value="DHULE">DHULE</option>
-                <option value="GADCHIROLI">GADCHIROLI</option>
-                <option value="GONDIA">GONDIA</option>
-                <option value="HINGOLI">HINGOLI</option>
-                <option value="JALGAON">JALGAON</option>
-                <option value="JALNA">JALNA</option>
-                <option value="KOLHAPUR">KOLHAPUR</option>
-                <option value="LATUR">LATUR</option>
-                <option value="Mira-Bhayandar, Vasai-Virar Police Commissioner">Mira-Bhayandar, Vasai-Virar Police Commissioner</option>
-                <option value="NAGPUR CITY">NAGPUR CITY</option>
-                <option value="NAGPUR RURAL">NAGPUR RURAL</option>
-                <option value="NANDED">NANDED</option>
-                <option value="NANDURBAR">NANDURBAR</option>
-                <option value="NASHIK CITY">NASHIK CITY</option>
-                <option value="NASHIK RURAL">NASHIK RURAL</option>
-                <option value="NAVI MUMBAI">NAVI MUMBAI</option>
-                <option value="PALGHAR">PALGHAR</option>
-                <option value="PARBHANI">PARBHANI</option>
-                <option value="PIMPRI-CHINCHWAD">PIMPRI-CHINCHWAD</option>
-                <option value="PUNE CITY">PUNE CITY</option>
-                <option value="PUNE RURAL">PUNE RURAL</option>
-                <option value="RAIGAD">RAIGAD</option>
-                <option value="RAILWAY CHHATRAPATI SAMBHAJINAGAR">RAILWAY CHHATRAPATI SAMBHAJINAGAR</option>
-                <option value="RAILWAY MUMBAI">RAILWAY MUMBAI</option>
-                <option value="RAILWAY NAGPUR">RAILWAY NAGPUR</option>
-                <option value="RAILWAY PUNE">RAILWAY PUNE</option>
-                <option value="RATNAGIRI">RATNAGIRI</option>
-                <option value="SANGLI">SANGLI</option>
-                <option value="SATARA">SATARA</option>
-                <option value="SINDHUDURG">SINDHUDURG</option>
-                <option value="SOLAPUR CITY">SOLAPUR CITY</option>
-                <option value="SOLAPUR RURAL">SOLAPUR RURAL</option>
-                <option value="THANE CITY">THANE CITY</option>
-                <option value="THANE RURAL">THANE RURAL</option>
-                <option value="WARDHA">WARDHA</option>
-                <option value="WASHIM">WASHIM</option>
-                <option value="YAVATMAL">YAVATMAL</option>
-            </select>
-
-            <button type="submit">Download FIRs</button>
-            <div class="loader" id="loader"></div>
-        </form>
-        <div id="downloadLink"></div>
+  <div id="downloadForm">
+    <h1>🛡️ Animal Protection FIR Downloader</h1>
+    <div class="subtitle">Download FIRs related to animal protection laws from Maharashtra Police</div>
+    
+    <div class="warning">
+      ⚠️ <strong>Important:</strong> This tool extracts FIRs related to animal protection laws only. Processing time varies from 5-30 minutes based on date range and number of records found.
     </div>
 
-    <script>
-        document.getElementById('form').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const fromDate = document.getElementById('fromDate').value;
-            const toDate = document.getElementById('toDate').value;
-            const districtName = document.getElementById('districtName').value;
-            const loader = document.getElementById('loader');
-            const downloadLinkDiv = document.getElementById('downloadLink');
+    <form id="form">
+      <label for="fromDate">From Date (DD/MM/YYYY):</label>
+      <input type="text" id="fromDate" name="fromDate" placeholder="01/08/2025" required />
 
-            loader.style.display = 'block';
+      <label for="toDate">To Date (DD/MM/YYYY):</label>
+      <input type="text" id="toDate" name="toDate" placeholder="15/08/2025" required />
 
-            fetch(`/download-firs?fromDate=${fromDate}&toDate=${toDate}&districtName=${districtName}`)
-                .then(response => response.text())
-                .then(data => {
-                    loader.style.display = 'none';
-                    downloadLinkDiv.innerHTML = data;
-                });
+      <label for="districtName">District:</label>
+      <select id="districtName" name="districtName" required>
+        <option value="">Select District</option>
+        <option value="AHILYANAGAR">AHILYANAGAR</option>
+        <option value="AKOLA">AKOLA</option>
+        <option value="AMRAVATI CITY">AMRAVATI CITY</option>
+        <option value="AMRAVATI RURAL">AMRAVATI RURAL</option>
+        <option value="BEED">BEED</option>
+        <option value="BHANDARA">BHANDARA</option>
+        <option value="BRIHAN MUMBAI CITY">BRIHAN MUMBAI CITY</option>
+        <option value="BULDHANA">BULDHANA</option>
+        <option value="CHANDRAPUR">CHANDRAPUR</option>
+        <option value="CHHATRAPATI SAMBHAJINAGAR (RURAL)">CHHATRAPATI SAMBHAJINAGAR (RURAL)</option>
+        <option value="CHHATRAPATI SAMBHAJINAGAR CITY">CHHATRAPATI SAMBHAJINAGAR CITY</option>
+        <option value="DHARASHIV">DHARASHIV</option>
+        <option value="DHULE">DHULE</option>
+        <option value="GADCHIROLI">GADCHIROLI</option>
+        <option value="GONDIA">GONDIA</option>
+        <option value="HINGOLI">HINGOLI</option>
+        <option value="JALGAON">JALGAON</option>
+        <option value="JALNA">JALNA</option>
+        <option value="KOLHAPUR">KOLHAPUR</option>
+        <option value="LATUR">LATUR</option>
+        <option value="Mira-Bhayandar, Vasai-Virar Police Commissioner">Mira-Bhayandar, Vasai-Virar Police Commissioner</option>
+        <option value="NAGPUR CITY">NAGPUR CITY</option>
+        <option value="NAGPUR RURAL">NAGPUR RURAL</option>
+        <option value="NANDED">NANDED</option>
+        <option value="NANDURBAR">NANDURBAR</option>
+        <option value="NASHIK CITY">NASHIK CITY</option>
+        <option value="NASHIK RURAL">NASHIK RURAL</option>
+        <option value="NAVI MUMBAI">NAVI MUMBAI</option>
+        <option value="PALGHAR">PALGHAR</option>
+        <option value="PARBHANI">PARBHANI</option>
+        <option value="PIMPRI-CHINCHWAD">PIMPRI-CHINCHWAD</option>
+        <option value="PUNE CITY">PUNE CITY</option>
+        <option value="PUNE RURAL">PUNE RURAL</option>
+        <option value="RAIGAD">RAIGAD</option>
+        <option value="RAILWAY CHHATRAPATI SAMBHAJINAGAR">RAILWAY CHHATRAPATI SAMBHAJINAGAR</option>
+        <option value="RAILWAY MUMBAI">RAILWAY MUMBAI</option>
+        <option value="RAILWAY NAGPUR">RAILWAY NAGPUR</option>
+        <option value="RAILWAY PUNE">RAILWAY PUNE</option>
+        <option value="RATNAGIRI">RATNAGIRI</option>
+        <option value="SANGLI">SANGLI</option>
+        <option value="SATARA">SATARA</option>
+        <option value="SINDHUDURG">SINDHUDURG</option>
+        <option value="SOLAPUR CITY">SOLAPUR CITY</option>
+        <option value="SOLAPUR RURAL">SOLAPUR RURAL</option>
+        <option value="THANE CITY">THANE CITY</option>
+        <option value="THANE RURAL">THANE RURAL</option>
+        <option value="WARDHA">WARDHA</option>
+        <option value="WASHIM">WASHIM</option>
+        <option value="YAVATMAL">YAVATMAL</option>
+      </select>
+
+      <button type="submit" id="submitBtn">🚀 Start FIR Extraction</button>
+      <div class="loader" id="loader"></div>
+      <div class="error" id="error"></div>
+      <div class="progress" id="progress">
+        <div id="progressText"></div>
+        <div class="progress-details" id="progressDetails"></div>
+      </div>
+      <div class="success" id="success"></div>
+    </form>
+    <div id="downloadLink"></div>
+    <div class="job-info" id="jobInfo"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    const BASE_URL = window.location.origin;
+
+    const form = document.getElementById('form');
+    const submitBtn = document.getElementById('submitBtn');
+    const loader = document.getElementById('loader');
+    const downloadLinkDiv = document.getElementById('downloadLink');
+    const errorDiv = document.getElementById('error');
+    const progressDiv = document.getElementById('progress');
+    const progressText = document.getElementById('progressText');
+    const progressDetails = document.getElementById('progressDetails');
+    const successDiv = document.getElementById('success');
+    const jobInfoDiv = document.getElementById('jobInfo');
+
+    let pollInterval = null;
+    let currentJobId = null;
+
+    function clearMessages() {
+      errorDiv.style.display = 'none';
+      progressDiv.style.display = 'none';
+      successDiv.style.display = 'none';
+      downloadLinkDiv.innerHTML = '';
+      jobInfoDiv.innerHTML = '';
+      progressDetails.innerHTML = '';
+    }
+
+    function showError(message) {
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+    }
+
+    function showProgress(message, details = {}) {
+      progressText.textContent = message;
+      progressDiv.style.display = 'block';
+      
+      // Update progress details
+      let detailsHtml = '';
+      if (details.totalDownloaded !== undefined) {
+        detailsHtml += `<div class="progress-item"><span>📄 Files Downloaded:</span><span>${details.totalDownloaded}</span></div>`;
+      }
+      if (details.currentPage !== undefined) {
+        detailsHtml += `<div class="progress-item"><span>📄 Current Page:</span><span>${details.currentPage}</span></div>`;
+      }
+      if (details.processingSpeed && details.processingSpeed !== 'Calculating...') {
+        detailsHtml += `<div class="progress-item"><span>⚡ Speed:</span><span>${details.processingSpeed}</span></div>`;
+      }
+      if (details.estimatedTimeRemaining && details.estimatedTimeRemaining !== 'Calculating...') {
+        detailsHtml += `<div class="progress-item"><span>⏱️ Est. Time:</span><span>${details.estimatedTimeRemaining}</span></div>`;
+      }
+      
+      progressDetails.innerHTML = detailsHtml;
+    }
+
+    function showSuccess(message) {
+      successDiv.textContent = message;
+      successDiv.style.display = 'block';
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      clearMessages();
+
+      const fromDate = document.getElementById('fromDate').value.trim();
+      const toDate = document.getElementById('toDate').value.trim();
+      const districtName = document.getElementById('districtName').value.trim();
+
+      if (!fromDate || !toDate || !districtName) {
+        showError('Please fill all fields.');
+        return;
+      }
+
+      const datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
+      if (!datePattern.test(fromDate) || !datePattern.test(toDate)) {
+        showError('Please use DD/MM/YYYY format for dates.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = '🔄 Starting...';
+      loader.style.display = 'block';
+      showProgress('🚀 Initializing FIR extraction job...');
+
+      try {
+        const { data: jobData } = await axios.post(`${BASE_URL}/start-fir-job`, {
+          fromDate,
+          toDate,
+          districtName
+        }, {
+          timeout: 15000
         });
-    </script>
+
+        currentJobId = jobData.jobId;
+        showProgress(`✅ Job started successfully!`);
+        jobInfoDiv.innerHTML = `
+          <strong>Job ID:</strong> ${currentJobId}<br>
+          <strong>District:</strong> ${districtName}<br>
+          <strong>Date Range:</strong> ${fromDate} to ${toDate}<br>
+          <strong>Started:</strong> ${new Date().toLocaleString()}
+        `;
+
+        // Poll for status every 3 seconds
+        pollInterval = setInterval(async () => {
+          try {
+            const { data: status } = await axios.get(`${BASE_URL}/job-status/${currentJobId}`, {
+              timeout: 10000
+            });
+
+            showProgress(status.progress, {
+              totalDownloaded: status.totalDownloaded,
+              currentPage: status.currentPage,
+              processingSpeed: status.processingSpeed,
+              estimatedTimeRemaining: status.estimatedTimeRemaining
+            });
+
+            if (status.status === 'completed') {
+              clearInterval(pollInterval);
+              pollInterval = null;
+              
+              showSuccess(`🎉 Extraction completed! Found ${status.totalDownloaded} animal protection law violations.`);
+              downloadLinkDiv.innerHTML = `
+                <a href="${BASE_URL}/download-job-zip/${currentJobId}" target="_blank">
+                  📥 Download ZIP File (${status.totalDownloaded} FIRs)
+                </a>
+                <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                  ⚠️ Files will be automatically deleted after 30 minutes to save server space
+                </div>
+              `;
+              loader.style.display = 'none';
+              submitBtn.disabled = false;
+              submitBtn.textContent = '🚀 Start New Extraction';
+              
+            } else if (status.status === 'failed') {
+              clearInterval(pollInterval);
+              pollInterval = null;
+              
+              showError(`❌ Job failed: ${status.error || 'Unknown error occurred'}`);
+              loader.style.display = 'none';
+              submitBtn.disabled = false;
+              submitBtn.textContent = '🚀 Try Again';
+            }
+          } catch (err) {
+            console.error('Polling error:', err);
+            // Continue polling on minor errors
+          }
+        }, 3000);
+
+      } catch (err) {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+
+        if (err.response && err.response.data) {
+          showError(`❌ ${err.response.data.error || err.response.data}`);
+        } else if (err.code === 'ECONNABORTED') {
+          showError('⏰ Request timed out. Server may be busy, please try again.');
+        } else if (err.code === 'ECONNREFUSED') {
+          showError('🔌 Cannot connect to server. Please check if the server is running.');
+        } else {
+          showError('❌ An unexpected error occurred. Please try again.');
+        }
+
+        loader.style.display = 'none';
+        submitBtn.disabled = false;
+        submitBtn.textContent = '🚀 Start FIR Extraction';
+      }
+    });
+
+    // Clean up polling on page unload
+    window.addEventListener('beforeunload', () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    });
+  </script>
 </body>
 </html>
