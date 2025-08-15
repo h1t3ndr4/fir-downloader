@@ -173,10 +173,19 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
     updateJobProgress(jobId, "🌐 Launching browser (this may take a moment)...", { totalDownloaded });
     console.log(`🌐 Launching Puppeteer browser for job ${jobId}...`);
     const browser = await puppeteer.launch({
-      headless: "new",
-      defaultViewport: null,
-      args: ["--start-maximized"]
-    });
+    headless: "new",
+    defaultViewport: null,
+    args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--start-maximized'
+    ]
+});
+
 
     try {
       updateJobProgress(jobId, "📖 Opening new browser tab...", { totalDownloaded });
