@@ -56,7 +56,7 @@ process.on('SIGINT', () => {
 setInterval(() => {
   const memUsage = process.memoryUsage();
   console.log(`📊 Memory: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB / ${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`);
-  
+
   // Railway Hobby has limited memory - warn if getting close
   if (memUsage.heapUsed > 800 * 1024 * 1024) { // 800MB warning
     console.warn('⚠️ High memory usage detected');
@@ -71,12 +71,12 @@ function getJobDownloadPath(jobId) {
 function ensureJobDownloadDir(jobId) {
   const jobDownloadPath = getJobDownloadPath(jobId);
   console.log(`📁 Ensuring download directory for job ${jobId}...`);
-  
+
   if (fs.existsSync(jobDownloadPath)) {
     console.log(`🗑️ Removing existing job directory: ${jobDownloadPath}`);
     fs.rmSync(jobDownloadPath, { recursive: true, force: true });
   }
-  
+
   fs.mkdirSync(jobDownloadPath, { recursive: true });
   console.log(`✅ Job download directory ready: ${jobDownloadPath}`);
   return jobDownloadPath;
@@ -117,7 +117,7 @@ function updateJobProgress(jobId, progress, details = {}) {
 // Schedule automatic cleanup after successful download
 function scheduleJobCleanup(jobId, delayMinutes = 30) {
   console.log(`⏰ Scheduling cleanup for job ${jobId} in ${delayMinutes} minutes`);
-  
+
   setTimeout(() => {
     if (jobs[jobId]) {
       try {
@@ -127,17 +127,17 @@ function scheduleJobCleanup(jobId, delayMinutes = 30) {
           fs.rmSync(jobDownloadPath, { recursive: true, force: true });
           console.log(`🗑️ Auto-deleted job directory: ${jobDownloadPath}`);
         }
-        
+
         // Delete ZIP file
         if (jobs[jobId].zipPath && fs.existsSync(jobs[jobId].zipPath)) {
           fs.unlinkSync(jobs[jobId].zipPath);
           console.log(`🗑️ Auto-deleted ZIP file: ${jobs[jobId].zipPath}`);
         }
-        
+
         // Remove from jobs tracking
         delete jobs[jobId];
         console.log(`🗑️ Auto-cleaned job: ${jobId} after ${delayMinutes} minutes`);
-        
+
       } catch (error) {
         console.error(`❌ Error during scheduled cleanup of job ${jobId}: ${error.message}`);
       }
@@ -199,10 +199,10 @@ async function waitForDownloadedPdf(downloadDir, beforeSet, timeoutMs = 120000) 
 async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
   console.log(`🚀 Starting FIR extraction for job ${jobId}: ${fromDate} to ${toDate}, district code: ${districtCode}`);
   const startTime = Date.now();
-  
+
   // ✅ Initialize all counters at function start to avoid scope issues
   let totalDownloaded = 0;
-  
+
   try {
     updateJobProgress(jobId, "🔧 Setting up isolated download directory...", { totalDownloaded });
     const jobDownloadPath = ensureJobDownloadDir(jobId);
@@ -257,11 +257,11 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
       const client = await page.target().createCDPSession();
       const absPath = path.resolve(jobDownloadPath); // Use job-specific path
       console.log(`📂 Job ${jobId} absolute download path: ${absPath}`);
-      
+
       // ✅ Memory optimizations
       await page.setViewport({ width: 1024, height: 768 });
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-      
+
       // ✅ Block unnecessary resources to save memory
       await page.setRequestInterception(true);
       page.on('request', (req) => {
@@ -284,7 +284,7 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
       } catch (e) {
         console.log(`⚠️ Job ${jobId}: Browser.setDownloadBehavior failed, trying Page.setDownloadBehavior...`);
       }
-      
+
       if (!downloadBehaviorSet) {
         try {
           await client.send("Page.setDownloadBehavior", {
@@ -300,11 +300,11 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
       const url = "https://citizen.mahapolice.gov.in/Citizen/MH/PublishedFIRs.aspx";
       updateJobProgress(jobId, "🔗 Connecting to Maharashtra Police website...", { totalDownloaded });
       console.log(`🔗 Job ${jobId}: Navigating to: ${url}`);
-      await page.goto(url, { 
+      await page.goto(url, {
         waitUntil: "domcontentloaded", // Faster than networkidle
-        timeout: 30000 
+        timeout: 30000
       });
-      
+
       updateJobProgress(jobId, "🔄 Loading website content...", { totalDownloaded });
       console.log(`🔄 Job ${jobId}: Reloading page...`);
       await page.reload({ waitUntil: "networkidle2" });
@@ -373,17 +373,17 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
       const seenFirstRowHashes = new Set();
 
       // ✅ Process pages with memory management
-      while (!isLastPage && pageIndex <= 10) { // Limit to 10 pages to prevent memory overflow
+      while (!isLastPage) { // Limit to 10 pages to prevent memory overflow
         const elapsedMinutes = (Date.now() - startTime) / 60000;
         const processingSpeed = totalDownloaded > 0 ? `${Math.round(totalDownloaded / elapsedMinutes)} files/min` : 'Calculating...';
-        
-        updateJobProgress(jobId, `📄 Processing page ${pageIndex}... (Scanning FIR records)`, { 
-          currentPage: pageIndex, 
+
+        updateJobProgress(jobId, `📄 Processing page ${pageIndex}... (Scanning FIR records)`, {
+          currentPage: pageIndex,
           totalDownloaded,
           processingSpeed
         });
         console.log(`📄 Job ${jobId}: Processing page ${pageIndex}...`);
-        
+
         // Grab rows: each row has 10 TDs; last TD has a download input
         const firData = await page.evaluate(() => {
           const rows = Array.from(
@@ -434,47 +434,47 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
           try {
             const currentElapsedMinutes = (Date.now() - startTime) / 60000;
             const currentProcessingSpeed = totalDownloaded > 0 ? `${Math.round(totalDownloaded / currentElapsedMinutes)} files/min` : 'Calculating...';
-            const estimatedTimeRemaining = totalDownloaded > 0 ? 
-              `~${Math.round((currentElapsedMinutes / totalDownloaded) * (50 - totalDownloaded))} min remaining` : 
+            const estimatedTimeRemaining = totalDownloaded > 0 ?
+              `~${Math.round((currentElapsedMinutes / totalDownloaded) * (50 - totalDownloaded))} min remaining` :
               'Calculating...';
 
-            updateJobProgress(jobId, `📋 Page ${pageIndex}: Analyzing FIR ${index + 1}/${firData.length}`, { 
-              currentPage: pageIndex, 
+            updateJobProgress(jobId, `📋 Page ${pageIndex}: Analyzing FIR ${index + 1}/${firData.length}`, {
+              currentPage: pageIndex,
               totalDownloaded,
               processingSpeed: currentProcessingSpeed,
               estimatedTimeRemaining
             });
             console.log(`🔍 Job ${jobId}: Checking FIR ${index + 1}/${firData.length} on page ${pageIndex}`);
-            
+
             // Check multiple columns for section text (adjusting based on actual data structure)
             const sectionText1 = fir.data[8] || "";
             const sectionText2 = fir.data[1] || "";
             const allText = sectionText1 + " " + sectionText2;
-            
+
             console.log(`📋 Job ${jobId}: Section text: ${allText.substring(0, 200)}${allText.length > 200 ? '...' : ''}`);
-            
+
             const matches = targetSections.some((s) => allText.includes(s));
             if (!matches) {
               console.log(`⏭️ Job ${jobId}: No target section match found, skipping`);
               continue;
             }
-            
+
             console.log(`✅ Job ${jobId}: Target section match found!`);
-            
+
             if (!fir.downloadSelector) {
               console.log(`❌ Job ${jobId}: No download selector found, skipping`);
               continue;
             }
 
-            updateJobProgress(jobId, `📥 Downloading FIR file ${totalDownloaded + 1}... Please wait`, { 
-              currentPage: pageIndex, 
+            updateJobProgress(jobId, `📥 Downloading FIR file ${totalDownloaded + 1}... Please wait`, {
+              currentPage: pageIndex,
               totalDownloaded,
               processingSpeed: currentProcessingSpeed
             });
             console.log(`📥 Job ${jobId}: Attempting download for selector: ${fir.downloadSelector}`);
             const filesBefore = new Set(fs.readdirSync(jobDownloadPath)); // Use job-specific path
             console.log(`📁 Job ${jobId}: Files before download: ${filesBefore.size}`);
-            
+
             await page.click(`#${fir.downloadSelector}`);
             console.log(`🖱️ Job ${jobId}: Download button clicked`);
 
@@ -486,49 +486,44 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
 
             if (downloadedFile) {
               console.log(`✅ Job ${jobId}: File downloaded: ${downloadedFile}`);
-              
+
               // ✅ FIXED: Extract data for filename with length limits
-              const firNumberRaw = (fir.data[7] || fir.data[2] || "unknown").split("/");
-              const field2 = safe(fir.data || "field2");
-              const field3 = safe(fir.data[3] || "field3");
-              const field4 = safe(fir.data[4] || "field4");
-              const field6 = safe(fir.data[6] || "field6");
-              
-              // ✅ FIXED: Create shorter filename with total length check
-              let newFileName = `${field2}_${field3}_${field4}_${safe(firNumberRaw)}_${field6}.pdf`;
-              
-              // ✅ ADDITIONAL SAFETY: If still too long, truncate to 100 chars max
-              if (newFileName.length > 100) {
-                const timestamp = Date.now().toString().slice(-6); // Last 6 digits
-                newFileName = `FIR_${safe(firNumberRaw)}_${timestamp}.pdf`;
+              const firNumber = (fir.data[7] || "").split("/");
+              const rawName = `${fir.data}_${fir.data}_${fir.data}_${firNumber}_${fir.data}`;
+              let safeFileName = rawName.replace(/[\\/:\*?"<>|]/g, '_').replace(/\s+/g, ' ');
+
+              // Hard limit: Linux filename ≤ 255 bytes (keep 240 for safety)
+              const MAX_BYTES = 240;
+              while (Buffer.byteLength(safeFileName, 'utf8') > MAX_BYTES) {
+                // drop the right-most “_segment” until it fits
+                const idx = safeFileName.lastIndexOf('_');
+                if (idx === -1) break;             // nothing left to trim
+                safeFileName = safeFileName.slice(0, idx);
               }
-              
-              console.log(`📝 Job ${jobId}: Renaming to: ${newFileName}`);
 
-              const oldFilePath = path.join(jobDownloadPath, downloadedFile); // Job-specific path
-              const newFilePath = path.join(jobDownloadPath, newFileName);    // Job-specific path
+              const newFileName = `${safeFileName}.pdf`;
+              // ─────────────────────────────────────────────────────────
 
-              // Avoid overwriting
-              let finalPath = newFilePath;
-              let i = 1;
+              // avoid overwriting
+              let finalPath = path.join(jobDownloadPath, newFileName);
+              let n = 1;
               while (fs.existsSync(finalPath)) {
                 const ext = path.extname(newFileName);
                 const base = path.basename(newFileName, ext);
-                finalPath = path.join(jobDownloadPath, `${base}(${i})${ext}`);
-                i++;
+                finalPath = path.join(jobDownloadPath, `${base}(${n})${ext}`);
+                n++;
               }
-              
+
               fs.renameSync(oldFilePath, finalPath);
               console.log(`✅ Job ${jobId}: File renamed to: ${path.basename(finalPath)}`);
-              
               pageDownloads++;
-              totalDownloaded++; // ✅ Safe increment now that variable is properly scoped
-              
+              totalDownloaded++;
+
               const updatedElapsedMinutes = (Date.now() - startTime) / 60000;
               const updatedProcessingSpeed = `${Math.round(totalDownloaded / updatedElapsedMinutes)} files/min`;
-              
-              updateJobProgress(jobId, `✅ Downloaded ${totalDownloaded} files successfully`, { 
-                currentPage: pageIndex, 
+
+              updateJobProgress(jobId, `✅ Downloaded ${totalDownloaded} files successfully`, {
+                currentPage: pageIndex,
                 totalDownloaded,
                 processingSpeed: updatedProcessingSpeed
               });
@@ -549,16 +544,16 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
 
         // Pagination: try to click next pageIndex+1
         pageIndex++;
-        updateJobProgress(jobId, `🔄 Moving to page ${pageIndex}... (${totalDownloaded} files collected so far)`, { 
-          currentPage: pageIndex - 1, 
-          totalDownloaded 
+        updateJobProgress(jobId, `🔄 Moving to page ${pageIndex}... (${totalDownloaded} files collected so far)`, {
+          currentPage: pageIndex - 1,
+          totalDownloaded
         });
         console.log(`🔄 Job ${jobId}: Attempting to navigate to page ${pageIndex}...`);
-        
+
         const pageClicked = await page.evaluate((nextIndex) => {
           const links = Array.from(document.querySelectorAll(".gridPager a"));
           console.log(`Found ${links.length} pagination links`);
-          
+
           let target = links.find((l) => l.innerText.trim() === String(nextIndex));
           if (!target) {
             console.log(`Page ${nextIndex} link not found, looking for dots...`);
@@ -594,7 +589,7 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
           timeout: 60000
         });
         console.log(`✅ Job ${jobId}: Page ${pageIndex} loaded successfully`);
-        
+
         // ✅ Memory cleanup every few pages
         if (pageIndex % 3 === 0) {
           await page.evaluate(() => {
@@ -608,7 +603,7 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
       console.log(`🎉 Job ${jobId}: Scraping completed! Total downloads: ${totalDownloaded}`);
       await browser.close();
       console.log(`🌐 Job ${jobId}: Browser closed`);
-      
+
     } catch (err) {
       console.error(`❌ Job ${jobId}: Error during extraction: ${err.message}`);
       console.error(`Stack trace: ${err.stack}`);
@@ -624,7 +619,7 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
     updateJobProgress(jobId, `🗜️ Creating ZIP file with ${totalDownloaded} documents...`, { totalDownloaded });
     console.log(`🗜️ Job ${jobId}: Creating ZIP file...`);
     const zipFilePath = path.join(__dirname, `downloaded_firs_${jobId}.zip`);
-    
+
     await new Promise((resolve, reject) => {
       const output = fs.createWriteStream(zipFilePath);
       const archive = archiver("zip", { zlib: { level: 9 } });
@@ -633,7 +628,7 @@ async function extractAndDownloadFIRs(fromDate, toDate, districtCode, jobId) {
         console.log(`✅ Job ${jobId}: ZIP file created: ${archive.pointer()} total bytes`);
         resolve();
       });
-      
+
       archive.on("error", (err) => {
         console.error(`❌ Job ${jobId}: ZIP creation error: ${err.message}`);
         reject(err);
@@ -669,7 +664,7 @@ app.use(express.static(publicPath));
 // ✅ DEBUGGING ROUTES - FIRST PRIORITY
 app.get('/debug-files', (req, res) => {
   const indexPath = path.join(publicPath, "index.html");
-  
+
   const debugInfo = {
     timestamp: new Date().toISOString(),
     publicPathExists: fs.existsSync(publicPath),
@@ -687,7 +682,7 @@ app.get('/debug-files', (req, res) => {
     port: port,
     host: host
   };
-  
+
   console.log('🔍 Debug info requested:', debugInfo);
   res.json(debugInfo);
 });
@@ -712,13 +707,13 @@ app.get('/env-debug', (req, res) => {
     publicFolderExists: fs.existsSync(publicPath),
     indexFileExists: fs.existsSync(path.join(publicPath, "index.html"))
   };
-  
+
   res.json(envInfo);
 });
 
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
+  res.json({
+    status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: process.memoryUsage()
@@ -729,7 +724,7 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   const indexPath = path.join(publicPath, "index.html");
   console.log(`🏠 Root route requested, serving: ${indexPath}`);
-  
+
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
@@ -757,7 +752,7 @@ app.get('/', (req, res) => {
 app.post("/start-fir-job", async (req, res) => {
   console.log(`📥 Received request: POST /start-fir-job from ${req.ip}`);
   console.log(`📋 Body:`, req.body);
-  
+
   const { fromDate, toDate, districtName } = req.body;
 
   if (!fromDate || !toDate || !districtName) {
@@ -805,8 +800,8 @@ app.post("/start-fir-job", async (req, res) => {
   }
 
   // Rate limiting per user IP
-  const userJobs = Object.values(jobs).filter(j => 
-    j.userIp === req.ip && 
+  const userJobs = Object.values(jobs).filter(j =>
+    j.userIp === req.ip &&
     (j.status === 'started' || j.status === 'running')
   );
   if (userJobs.length >= 1) { // Reduce to 1 concurrent job
@@ -817,7 +812,7 @@ app.post("/start-fir-job", async (req, res) => {
   }
 
   const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   jobs[jobId] = {
     id: jobId,
     status: 'started',
@@ -843,10 +838,10 @@ app.post("/start-fir-job", async (req, res) => {
       jobs[jobId].progress = `🎉 Completed! Downloaded ${jobs[jobId].totalDownloaded} animal protection law FIRs. Ready for download.`;
       jobs[jobId].zipPath = zipPath;
       jobs[jobId].completedAt = new Date();
-      
+
       // Schedule cleanup after 30 minutes
       scheduleJobCleanup(jobId, 30);
-      
+
       console.log(`✅ Job ${jobId} completed successfully`);
     })
     .catch(error => {
@@ -854,10 +849,10 @@ app.post("/start-fir-job", async (req, res) => {
       jobs[jobId].progress = `❌ Failed: ${error.message}`;
       jobs[jobId].error = error.message;
       jobs[jobId].failedAt = new Date();
-      
+
       // Still schedule cleanup for failed jobs (shorter time)
       scheduleJobCleanup(jobId, 5);
-      
+
       console.error(`❌ Job ${jobId} failed: ${error.message}`);
     });
 
@@ -873,13 +868,13 @@ app.post("/start-fir-job", async (req, res) => {
 // Check job status
 app.get("/job-status/:jobId", (req, res) => {
   console.log(`📥 Received request: GET /job-status/${req.params.jobId} from ${req.ip}`);
-  
+
   const job = jobs[req.params.jobId];
   if (!job) {
     console.log(`❌ Job not found: ${req.params.jobId}`);
     return res.status(404).json({ error: 'Job not found' });
   }
-  
+
   console.log(`📊 Job ${req.params.jobId} status: ${job.status} - ${job.progress}`);
   res.json({
     id: job.id,
@@ -898,25 +893,25 @@ app.get("/job-status/:jobId", (req, res) => {
 // Download ZIP file for completed job
 app.get("/download-job-zip/:jobId", (req, res) => {
   console.log(`📥 Received request: GET /download-job-zip/${req.params.jobId} from ${req.ip}`);
-  
+
   const job = jobs[req.params.jobId];
   if (!job) {
     console.log(`❌ Job not found: ${req.params.jobId}`);
     return res.status(404).send("Job not found.");
   }
-  
+
   if (job.status !== 'completed') {
     console.log(`❌ Job not completed: ${req.params.jobId}`);
     return res.status(400).send("Job not completed yet.");
   }
-  
+
   if (!job.zipPath || !fs.existsSync(job.zipPath)) {
     console.log(`❌ ZIP file not found: ${job.zipPath}`);
     return res.status(404).send("ZIP file not found.");
   }
-  
+
   console.log(`📦 Sending ZIP file: ${job.zipPath}`);
-  
+
   // Send file and mark it for deletion (files will be auto-deleted after 30 minutes from completion)
   res.download(job.zipPath, `animal_protection_firs_${job.params.districtName.replace(/ /g, '_')}_${job.params.fromDate.replace(/\//g, '-')}_to_${job.params.toDate.replace(/\//g, '-')}.zip`, (err) => {
     if (err) {
@@ -924,7 +919,7 @@ app.get("/download-job-zip/:jobId", (req, res) => {
       res.status(500).send("Error downloading zip file.");
     } else {
       console.log(`✅ ZIP file sent successfully for job ${req.params.jobId}`);
-      
+
       // Update job to show it's been downloaded
       if (jobs[req.params.jobId]) {
         jobs[req.params.jobId].lastDownloaded = new Date();
@@ -954,7 +949,7 @@ function cleanupOldJobs() {
   const now = new Date();
   const maxAge = 2 * 60 * 60 * 1000; // 2 hours (backup cleanup)
   let cleanedCount = 0;
-  
+
   Object.keys(jobs).forEach(jobId => {
     const job = jobs[jobId];
     if (now - job.createdAt > maxAge) {
@@ -963,18 +958,18 @@ function cleanupOldJobs() {
         fs.rmSync(jobDownloadPath, { recursive: true, force: true });
         console.log(`🗑️ Backup cleanup - deleted job directory: ${jobDownloadPath}`);
       }
-      
+
       if (job.zipPath && fs.existsSync(job.zipPath)) {
         fs.unlinkSync(job.zipPath);
         console.log(`🗑️ Backup cleanup - deleted ZIP file: ${job.zipPath}`);
       }
-      
+
       delete jobs[jobId];
       cleanedCount++;
       console.log(`🗑️ Backup cleanup - removed old job: ${jobId}`);
     }
   });
-  
+
   if (cleanedCount > 0) {
     console.log(`🧹 Backup cleanup completed: ${cleanedCount} old jobs removed`);
   }
@@ -1025,7 +1020,7 @@ async function startServer() {
     // Keep server alive
     server.keepAliveTimeout = 65000;
     server.headersTimeout = 66000;
-    
+
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);
     process.exit(1);
