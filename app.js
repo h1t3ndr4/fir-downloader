@@ -9,7 +9,7 @@ const archiver = require("archiver");
 
 const app = express();
 const port = process.env.PORT || 8080;
-const host = process.env.HOST || '0.0.0.0';
+const host = '0.0.0.0';
 
 // Add JSON parsing middleware
 app.use(express.json());
