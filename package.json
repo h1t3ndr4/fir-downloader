@@ -23,6 +23,7 @@
     "moment-timezone": "^0.5.48",
     "npm": "^11.2.0",
     "path": "^0.12.7",
-    "puppeteer": "^24.6.0"
+    "puppeteer": "^24.6.0",
+    "uuid": "^11.1.0"
   }
 }
